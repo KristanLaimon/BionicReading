@@ -1,0 +1,4 @@
+koreader/
+dist/
+__pycache__/
+*.pyc

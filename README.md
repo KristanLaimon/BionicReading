@@ -56,3 +56,24 @@ The plugin does not automatically overwrite books or delete old backups.
 
 Reading time that was never recorded cannot be recovered by this plugin.
 Statistics already split between old checksums are not automatically merged.
+
+## Tests
+
+The dependency-free `describe`/`it` framework is copied directly from
+KristanLaimon's Panels Plus plugin, preserving its copyright and MIT license in
+`tests/PanelsPlusTestFramework/license.md`. Logic and reader integration tests use small, explicit KOReader mocks;
+native integration tests exercise the installed engine and SQLite with generated
+books and an isolated temporary statistics database.
+
+```sh
+./run-tests.sh                         # Plain Lua; no external test libraries
+LUA=luajit ./run-tests.sh              # KOReader-compatible LuaJIT
+./run-tests.sh tests/spec/plugin_spec.lua
+./run-tests.sh --native               # Installed KOReader + LuaJIT
+luacheck main.lua _meta.lua src tests
+```
+
+Native tests default to `/usr/lib/koreader`; set `KOREADER_DIR` to another
+installation. They leave rendered PNGs and their test database under a printed
+temporary directory. They do not open your books or your statistics database.
+See [tests/README.md](tests/README.md) for coverage and limits.
