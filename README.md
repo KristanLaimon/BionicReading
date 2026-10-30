@@ -20,6 +20,34 @@ Available for reflowable books handled by KOReader's text engine, including
 EPUB, HTML, TXT, FB2, and supported MOBI documents. PDF, DjVu, images, and comics
 do not expose this menu. Page and scroll modes use the same native reader.
 
+### Package manager metadata
+
+`manifest.json` follows the Panels Plus repository format for ZenPM. `_meta.lua`
+provides the matching KOReader/storefront ID, version, description, and authors.
+The canonical package and plugin module ID is `bionicreading`.
+
+Release packages must be named `bionicreading.koplugin.zip`, containing a single
+`bionicreading.koplugin/` directory with the plugin files. The manifest points to
+that asset in the latest GitHub release. Installing through a package manager
+requires publishing that release asset and registering the repository with the
+relevant catalog; these metadata files alone do not publish or list the plugin.
+
+## Build and releases
+
+Plugin implementation lives in `src/`; root `main.lua` is KOReader's entry point.
+All test code, fixtures, and the extracted test library live in `tests/`.
+
+```sh
+./build.sh --version 0.3.0
+```
+
+The Bash build uses standard shell utilities and `zip`/`unzip`, with no Python,
+Lua, or package-manager dependencies. It produces
+`dist/bionicreading.koplugin.zip` with the plugin, metadata, README, authors, and
+license. Tests, the reference patch, local KOReader sources, and development
+files are excluded. Metadata versions must agree; `--version` also checks the
+intended release version. `--output DIRECTORY` changes the output directory.
+
 ## Reading statistics and book identity
 
 The old patch rewrote the EPUB/HTML file and called `reloadDocument()` on every
@@ -70,6 +98,7 @@ books and an isolated temporary statistics database.
 LUA=luajit ./run-tests.sh              # KOReader-compatible LuaJIT
 ./run-tests.sh tests/spec/plugin_spec.lua
 ./run-tests.sh --native               # Installed KOReader + LuaJIT
+bash tests/release.sh                # ZIP structure, loader and version checks
 luacheck main.lua _meta.lua src tests
 ```
 

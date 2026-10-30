@@ -10,6 +10,9 @@ Pass a spec path to run that spec alone.
 
 Plugin source is under `src/`. The root `main.lua` delegates to its namespaced
 implementation so the packaged KOReader entry point remains valid.
+`bash tests/release.sh` checks the Bash build, ZIP contents, packaged Lua loader,
+and rejection of mismatched tag versions or incomplete/inconsistent metadata.
+The build needs standard `zip`/`unzip` commands; the loader test uses Lua.
 
 The unit suite checks native reader identity, checksum and statistics session
 preservation, public action registration, per-book settings, instance hook
