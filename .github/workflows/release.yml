@@ -1,0 +1,158 @@
+name: Build and draft release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "v*.*.*-*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  release:
+    name: Build ZIP and draft release
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: release
+        run: |
+          set -euo pipefail
+
+          git fetch --force origin \
+            +refs/heads/main:refs/remotes/origin/main \
+            '+refs/tags/*:refs/tags/*'
+
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Release tags must look like v0.3.0 or v0.3.0-Beta."
+            exit 1
+          fi
+
+          commit="$(git rev-list -n 1 "${tag}^{commit}")"
+          if [[ "${commit}" != "$(git rev-parse HEAD)" ]]; then
+            echo "::error::Tag ${tag} changed after checkout. Push a new release tag."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "${commit}" origin/main; then
+            echo "::error::Tag ${tag} does not point to a commit reachable from origin/main."
+            exit 1
+          fi
+
+          previous_tag="$(git describe --tags --abbrev=0 "${commit}^" 2>/dev/null || true)"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "version=${tag#v}" >> "${GITHUB_OUTPUT}"
+          echo "commit=${commit}" >> "${GITHUB_OUTPUT}"
+          echo "previous_tag=${previous_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build plugin ZIP
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: ./build.sh --version "${VERSION}"
+
+      - name: Write release notes draft
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          COMMIT: ${{ steps.release.outputs.commit }}
+          PREVIOUS_TAG: ${{ steps.release.outputs.previous_tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${PREVIOUS_TAG}" ]]; then
+            range="${PREVIOUS_TAG}..${COMMIT}"
+          else
+            range="${COMMIT}"
+          fi
+
+          notes_candidate=""
+          tag_clean="${TAG#v}"
+          tag_under="${tag_clean//./_}"
+          for candidate in \
+            "docs/releases/v${tag_under}_draft/${TAG}.github.md" \
+            "docs/releases/v${tag_under}_draft/${TAG}.md" \
+            "docs/releases/${TAG}.github.md" \
+            "docs/releases/${TAG}.md"; do
+            if [[ -f "${candidate}" ]]; then
+              notes_candidate="${candidate}"
+              break
+            fi
+          done
+
+          if [[ -n "${notes_candidate}" ]]; then
+            cp "${notes_candidate}" release-notes.md
+          else
+            {
+              echo "Built from tag: ${TAG}"
+              echo
+              echo "## Commits"
+              git log --format="- %h %s (%an)" "${range}"
+              echo
+              echo "## Authors"
+              git log --format="%an" "${range}" | sort -u | sed 's/^/- /'
+            } > release-notes.md
+          fi
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "::error::Release ${TAG} already exists. Edit it manually or delete it before rerunning."
+            exit 1
+          fi
+
+          prerelease=()
+          if [[ "${VERSION}" == *-* ]]; then
+            prerelease=(--prerelease)
+          fi
+          gh release create "${TAG}" \
+            --verify-tag --draft "${prerelease[@]}" \
+            --title "${VERSION}" \
+            --notes-file release-notes.md
+
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          test -s dist/bionicreading.koplugin.zip
+          gh release upload "${TAG}" dist/bionicreading.koplugin.zip --clobber
+          if ! gh release view "${TAG}" --json assets --jq '.assets[].name' \
+            | grep -Fx 'bionicreading.koplugin.zip' >/dev/null; then
+            echo "::error::Release asset was not uploaded."
+            exit 1
+          fi
+
+      - name: Link release editor
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          {
+            echo "## Draft release created"
+            echo
+            echo "- Tag: ${TAG}"
+            echo "- Asset: bionicreading.koplugin.zip"
+            echo "- Release: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+            echo "- Edit before publishing: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/edit/${TAG}"
+          } >> "${GITHUB_STEP_SUMMARY}"

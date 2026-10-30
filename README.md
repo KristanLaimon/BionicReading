@@ -48,6 +48,19 @@ license. Tests, the reference patch, local KOReader sources, and development
 files are excluded. Metadata versions must agree; `--version` also checks the
 intended release version. `--output DIRECTORY` changes the output directory.
 
+GitHub Actions runs Lua and LuaJIT tests, release packaging tests, Luacheck, and
+StyLua on pushes and pull requests to `main`. Pushing a version tag such as
+`v0.3.0` runs those checks and creates a **draft** GitHub release with the ZIP
+attached, following the Panels Plus release workflow. The tagged commit must be
+reachable from `main`, and both metadata versions must match the tag without
+its `v` prefix. Suffix tags such as `v0.3.0-Beta` create draft prereleases and
+require matching `0.3.0-Beta` metadata.
+
+Release notes use the matching `docs/releases/` draft when present, otherwise
+the commit list and authors since the previous tag. The action summary links
+the draft editor. Publishing the draft makes its asset available to package
+managers; the workflow does not automatically publish it.
+
 ## Reading statistics and book identity
 
 The old patch rewrote the EPUB/HTML file and called `reloadDocument()` on every

@@ -1,0 +1,54 @@
+name: Tests, lint and format
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Lua
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.1"
+
+      - name: Set up LuaRocks
+        uses: leafo/gh-actions-luarocks@v4
+
+      - name: Install Luacheck and LuaJIT
+        run: |
+          luarocks install luacheck
+          sudo apt-get update
+          sudo apt-get install -y luajit
+
+      - name: Check formatting
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check main.lua _meta.lua src tests
+
+      - name: Lint Lua
+        run: luacheck main.lua _meta.lua src tests
+
+      - name: Run Lua tests
+        run: ./run-tests.sh
+
+      - name: Run LuaJIT tests
+        run: LUA=luajit ./run-tests.sh
+
+      - name: Run release packaging tests
+        run: bash tests/release.sh
+
+      - name: Build plugin ZIP
+        run: ./build.sh
