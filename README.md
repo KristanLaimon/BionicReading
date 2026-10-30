@@ -1,39 +1,58 @@
-# focus-reading.lua
-# Focus Reading patch for KOReader
+# BionicReading for KOReader
 
-Focus Reading is a KOReader patch for EPUB, HTML, and XHTML books. It adds two assistive reading modes under **Typography**, below **Font**: **Bionic Reading** and **Guided Dots**. You can use either mode on its own or enable both at the same time.
+Bionic reading and guided dots inside KOReader's native text reader. A fork of
+Gervie Macahia's Focus Reading patch, maintained by KristanLaimon. Both authors
+are credited in the plugin metadata and [AUTHORS](src/AUTHORS); the original
+commit history is preserved.
 
-For quicker access, it also adds two Reader menu actions:
+## Install and use
 
-- `Toggle bionic reading`
-- `Toggle guided dots`
+1. If you used the old patch, follow the migration steps below first.
+2. Put this repository in `koreader/plugins/bionicreading.koplugin/` and restart
+   KOReader. This development checkout's existing `.koplugin` directory also works;
+   install only one copy.
+3. Open a text book and choose **Typography → Bionic reading**. Toggle **Bionic
+   reading**, **Guided dots**, or both. Each book remembers its own settings.
+4. Gesture and hotkey actions are available as **Toggle bionic reading** and
+   **Toggle guided dots**.
 
-When you toggle Focus Reading, KOReader reloads the book automatically and now restores your place much more reliably, keeping you near the same chapter instead of dropping you back somewhere else.
+Available for reflowable books handled by KOReader's text engine, including
+EPUB, HTML, TXT, FB2, and supported MOBI documents. PDF, DjVu, images, and comics
+do not expose this menu. Page and scroll modes use the same native reader.
 
-## How to use
+## Reading statistics and book identity
 
-1. Put the patch file in `koreader/patches`.
-2. Restart KOReader.
-3. Open a supported book.
-4. Open the book menu.
-5. Go to `Typography`.
-6. Find `Focus Reading` below `Font`.
-7. Use the checkbox to toggle `Bionic Reading`, `Guided Dots`, or both.
-8. Or use the Reader menu shortcuts:
-   - `Toggle bionic reading`
-   - `Toggle guided dots`
+The old patch rewrote the EPUB/HTML file and called `reloadDocument()` on every
+toggle. KOReader identifies statistics by book metadata and a file checksum;
+rewriting a book can change that identity, especially with hash-based sidecars.
 
-## Notes
+This plugin draws emphasis on the native page after text rendering and before
+highlights and other decorations. It never rewrites or reloads the book, changes
+pagination, navigates to another position, or opens another reader. Your native
+statistics session, checksum, bookmarks, dictionary selection, and progress stay
+with the same book. KOReader's normal statistics settings still determine which
+reading durations count.
 
-Works on supported text books only. `Bionic Reading` changes word emphasis. `Guided Dots` adds visual markers to help guide your eyes. If you use hash-based metadata, file rewrites can affect linked progress and other book data.
-\
-**Bionic Reading**
-<img src="https://github.com/user-attachments/assets/386c41cf-cef4-47a3-988e-439b1d87b518" style="width:50%;" />
+Emphasis adds a pixel of weight to the first part of each word using the actual
+character boxes. The original rule is retained: one and three-character words
+emphasize one character; other words emphasize half, rounded up. Unicode
+characters are counted rather than UTF-8 bytes. Guided dots are drawn in existing
+gaps between words, without adding text or changing line breaks. Their appearance
+can differ from the original patch's inserted bold tags and dot characters.
 
-**Guided Dots**
+## Migrate from the old patch
 
-<img src="https://github.com/user-attachments/assets/9b00362e-7e24-4817-859f-d609b4023843" width="50%" />
+1. While the old patch is still installed, open each book where it was enabled
+   and switch **both** Bionic Reading and Guided Dots off. The old patch restores
+   its `.intellireading.orig` backup when both modes are disabled.
+2. Disable/remove `2-focus-reading.lua` from your KOReader patches directory,
+   then restart KOReader with this plugin installed.
+3. Enable the desired modes through the new plugin menu.
 
-**Bionic Reading & Guided Dots**
+Keep any `.intellireading.orig` backups until you have verified your books.
+If the patch is already removed, restore a backup over its corresponding book
+only while that book is closed and after saving a separate copy of both files.
+The plugin does not automatically overwrite books or delete old backups.
 
-<img src="https://github.com/user-attachments/assets/f52ba8ea-bb7e-43ee-bbb0-87549b929b08" width="50%" />
+Reading time that was never recorded cannot be recovered by this plugin.
+Statistics already split between old checksums are not automatically merged.

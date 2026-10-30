@@ -1,0 +1,13 @@
+BionicReading is a fork of the Focus Reading KOReader user patch.
+
+Original author (all original commits):
+  Gervie Macahia / GervieMacahia <ggmacahia@gmail.com>
+
+Fork author, native-reader plugin, statistics fix, and tests:
+  KristanLaimon <itan_07@hotmail.com>
+
+The original patch and author commits remain available in the Git history.
+
+Test framework:
+  KristanLaimon, PanelsPlusTestFramework from Panels Plus (MIT).
+  Its original copyright header and license are retained in tests/.
